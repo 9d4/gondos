@@ -1,0 +1,9 @@
+# GraphQL schema example
+#
+# https://gqlgen.com/getting-started/
+
+type List {
+  id: ID!
+  title: String!
+  description: String!
+}
