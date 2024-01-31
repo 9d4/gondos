@@ -1,1 +1,3 @@
+DROP TABLE IF EXISTS `users`;
 DROP TABLE IF EXISTS `lists`;
+DROP TABLE IF EXISTS `list_items`;

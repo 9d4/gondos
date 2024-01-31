@@ -13,6 +13,9 @@ build *build-flags:
 run *run-args:
     go run -buildvcs . {{run-args}}
 
+serve *run-args:
+    go run -buildvcs . serve {{run-args}}
+
 gen:
     go generate ./...
 
@@ -21,6 +24,14 @@ migrate *args:
         github.com/golang-migrate/migrate/v4/cmd/migrate@v4.17.0 \
         -source=file://db/migrations/ \
         -database=mysql://"$DSN" \
+        {{args}}
+
+jet *args:
+    go run github.com/go-jet/jet/v2/cmd/jet@latest \
+        -source=mysql \
+        -path=./jetgen \
+        -dbname=asd \
+        -dsn="$DSN" \
         {{args}}
 
 gqlgen *args:
