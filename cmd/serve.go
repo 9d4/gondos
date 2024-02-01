@@ -12,8 +12,9 @@ import (
 	"github.com/spf13/cobra"
 
 	"gondos/api"
-	"gondos/app"
 	"gondos/db"
+	"gondos/internal/app"
+	"gondos/internal/store"
 )
 
 type serveCmd struct {
@@ -22,6 +23,8 @@ type serveCmd struct {
 		address            string
 		corsAllowedOrigins string
 		dsn                string
+		dbLogFile          string
+		dbLogStdout        bool
 	}
 }
 
@@ -34,6 +37,8 @@ func newServeCmd() *serveCmd {
 	}
 	root.cmd.Flags().StringVarP(&root.opts.address, "address", "a", env("ADDRESS", "127.0.0.1:8888"), "address to listen on")
 	root.cmd.Flags().StringVar(&root.opts.dsn, "dsn", env("DSN"), "database dsn")
+	root.cmd.Flags().StringVar(&root.opts.dbLogFile, "db-log", "db.log", "database log file")
+	root.cmd.Flags().BoolVar(&root.opts.dbLogStdout, "db-log-stdout", false, "log database to stdout instead")
 	return root
 }
 
@@ -45,14 +50,17 @@ func (c *serveCmd) run(cmd *cobra.Command, args []string) {
 		log.Fatal().Err(err).Msg("cannot connect database")
 	}
 
-	dbLogWriter, err := db.NewLogWriter("apk.log")
-	if err != nil {
-		log.Fatal().Err(err).Msg("cannot create db log file")
+	db.SetQueryLogger(os.Stdout)
+	if !c.opts.dbLogStdout {
+		dbLogWriter, err := db.NewLogWriter(c.opts.dbLogFile)
+		if err != nil {
+			log.Fatal().Err(err).Msg("cannot create db log file")
+		}
+		db.SetQueryLogger(dbLogWriter)
 	}
-	db.SetQueryLogger(dbLogWriter)
 
-	app := app.New(&app.Config{
-		DB: db_,
+	app := app.New(app.Dependencies{
+		UserStore: store.NewUserStore(db_),
 	})
 
 	handler := api.NewHandler(app)

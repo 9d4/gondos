@@ -14,8 +14,8 @@ import (
 type Users struct {
 	ID              int64 `sql:"primary_key"`
 	Name            string
-	Email           *string
-	CryptedPassword *string
-	CreatedAt       *time.Time
-	UpdatedAt       *time.Time
+	Email           string
+	CryptedPassword string
+	CreatedAt       time.Time
+	UpdatedAt       time.Time
 }

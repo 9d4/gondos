@@ -26,6 +26,14 @@ migrate *args:
         -database=mysql://"$DSN" \
         {{args}}
 
+oapigen *args:
+    go run github.com/deepmap/oapi-codegen/v2/cmd/oapi-codegen@latest {{args}}
+
+oapigen-gen *args:
+    just oapigen -generate=types -package=api -o=api/types.gen.go {{args}} api/description/api.yml
+    just oapigen -generate=chi-server -package=api -o=api/server.gen.go {{args}} api/description/api.yml
+
+
 jet *args:
     go run github.com/go-jet/jet/v2/cmd/jet@latest \
         -source=mysql \

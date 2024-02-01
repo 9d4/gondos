@@ -1,0 +1,12 @@
+---
+type: object
+required: [id, name, email, created_at]
+properties: 
+  id:
+    type: number
+  name:
+    type: string
+  email:
+    type: string
+  created_at:
+    type: string

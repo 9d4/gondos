@@ -5,52 +5,69 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/julienschmidt/httprouter"
+	"github.com/go-chi/chi/v5"
+	"github.com/rs/zerolog/log"
 
-	"gondos/app"
+	"gondos/internal/app"
 )
 
 func NewHandler(app *app.App) http.Handler {
-	h := &handler{app: app}
-	router := httprouter.New()
+	r := chi.NewRouter()
+	handler := newServer(app)
 
-	handle := func(fn Handle) httprouter.Handle {
-		return func(w http.ResponseWriter, r *http.Request, p httprouter.Params) {
-			err := fn(w, r, p)
-			if err != nil {
-				h.errorHandler(w, r, p, err)
-			}
-		}
-	}
-
-	router.GET("/", handle(h.index))
-	router.GET("/403", handle(h.thisShouldError))
-
-	return router
+	return HandlerFromMux(handler, r)
 }
 
-type Handle func(http.ResponseWriter, *http.Request, httprouter.Params) error
+func newServer(app *app.App) ServerInterface {
+	return &serverImpl{
+		app: app,
+	}
+}
 
-type handler struct {
+type serverImpl struct {
 	app *app.App
 }
 
-func (h *handler) index(w http.ResponseWriter, r *http.Request, _ httprouter.Params) error {
-	_, err := w.Write([]byte{'H', 'e', 'l', 'l', 'o', ' ', 'W', 'o', 'r', 'l', 'd'})
-	return err
-}
+func (si serverImpl) deliverErr(w http.ResponseWriter, r *http.Request, err error) {
+	var (
+		appUserErr app.UserError
+	)
 
-func (h *handler) thisShouldError(w http.ResponseWriter, r *http.Request, _ httprouter.Params) error {
-	return os.ErrPermission
-}
-
-func (h *handler) errorHandler(w http.ResponseWriter, r *http.Request, p httprouter.Params, err error) {
 	switch {
+	case errors.As(err, &appUserErr):
+		w.WriteHeader(http.StatusBadRequest)
+		w.Write([]byte(appUserErr.Message()))
+		return
 	case errors.Is(err, os.ErrPermission):
 		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte("permission denied"))
+		w.Write([]byte("forbidden"))
 		return
 	}
 
 	w.WriteHeader(http.StatusInternalServerError)
+	w.Write([]byte(err.Error()))
+	log.Debug().Caller().Err(err).Send()
+}
+
+// Register a new account
+// (POST /auth/register)
+func (si serverImpl) AuthRegister(w http.ResponseWriter, r *http.Request) {
+	var request AuthRegisterRequest
+	if err := parseJSON(r, &request); err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+
+	user, err := app.NewUser(request.Name, request.Email, request.Password)
+	if err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+
+	if err := si.app.CreateUser(r.Context(), user); err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
 }

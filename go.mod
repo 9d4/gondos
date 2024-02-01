@@ -6,8 +6,10 @@ toolchain go1.21.4
 
 require (
 	github.com/99designs/gqlgen v0.17.43
+	github.com/go-chi/chi/v5 v5.0.11
 	github.com/go-jet/jet/v2 v2.10.1
 	github.com/go-sql-driver/mysql v1.7.1
+	github.com/godruoyi/go-snowflake v0.0.2
 	github.com/joho/godotenv v1.5.1
 	github.com/julienschmidt/httprouter v1.3.0
 	github.com/rs/zerolog v1.31.0
@@ -30,9 +32,10 @@ require (
 	github.com/stretchr/testify v1.8.2 // indirect
 	github.com/urfave/cli/v2 v2.25.5 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
+	golang.org/x/crypto v0.18.0
 	golang.org/x/mod v0.10.0 // indirect
-	golang.org/x/sys v0.15.0 // indirect
-	golang.org/x/text v0.13.0 // indirect
+	golang.org/x/sys v0.16.0 // indirect
+	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/tools v0.9.3 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
