@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"database/sql"
+
 	"gondos/internal/app"
 	"gondos/jetgen/gondos/model"
 	"gondos/jetgen/gondos/table"
@@ -36,8 +37,11 @@ func (s *UserStorage) Add(ctx context.Context, user app.User) error {
 
 	stmt := table.Users.INSERT(table.Users.AllColumns).MODEL(model)
 	if _, err := stmt.ExecContext(ctx, tx); err != nil {
-		return err
+		return s.handleErr(err)
 	}
 	tx.Commit()
 	return nil
 }
+
+// ensure implement app.UserStore
+var _ app.UserStore = &UserStorage{}

@@ -1,11 +1,29 @@
 package app
 
-import "fmt"
+import (
+	"fmt"
+)
+
+var (
+	ErrUserRegistered UserError = newUserError(DuplicateErrorKind, "user.registered", "User already registered")
+)
+
+type ErrorKind string
+
+const (
+	DuplicateErrorKind  ErrorKind = "DUPLICATE"
+	ValidationErrorKind ErrorKind = "VALIDATE"
+)
 
 type baseError struct {
+	kind    ErrorKind
 	code    string
 	message string
 	cause   error
+}
+
+func (e baseError) Kind() ErrorKind {
+	return e.kind
 }
 
 func (e baseError) Code() string {
@@ -28,8 +46,9 @@ type InternalError struct{ baseError }
 
 type UserError struct{ baseError }
 
-func newUserError(code string, message string, cause ...error) UserError {
+func newUserError(kind ErrorKind, code string, message string, cause ...error) UserError {
 	ue := UserError{baseError: baseError{
+		kind:    kind,
 		code:    code,
 		message: message,
 	}}

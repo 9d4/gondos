@@ -22,19 +22,22 @@ paths:
             application/xml:
               schema: 
                 $ref: "#/components/schemas/AuthRegisterResponse"
-        default: 
-          $ref: "#/components/responses/default"
-              
+
+        '422':
+          description: validation error
+          content: 
+            application/json:
+              schema: 
+                $ref: "#/components/schemas/ValidationError"
+          
+        '4xx':
+          description: error
+          content: 
+            application/json:
+              schema: 
+                $ref: "#/components/schemas/Error"
 security: []
 components: 
-  responses: 
-    default:
-      description: "error"
-      content: 
-        application/json:
-          schema: 
-            $ref: "#/components/schemas/Error"
-
   schemas: 
     Error:
       required: [code, message]
@@ -43,6 +46,20 @@ components:
           type: string
         message:
           type: string
+    ValidationError:
+      required: [code, message, params]
+      properties: 
+        code:
+          type: string
+        message:
+          type: string 
+        params:
+          type: array
+          items: 
+            $ref: "#/components/schemas/ValidationErrorParams"
+    ValidationErrorParams:
+      type: object
+        
     AuthRegisterRequest:
       $ref: components/schemas/auth-register-request.yml
     AuthRegisterResponse:

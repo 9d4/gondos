@@ -23,13 +23,26 @@ type User struct {
 }
 
 func NewUser(name string, email string, password string) (User, error) {
-	user := User{
-		id:        int64(snowflake.ID()),
-		name:      name,
-		email:     email,
-		createdAt: time.Now(),
-		updatedAt: time.Now(),
+	var user User
+
+	if err := validateFields(validate, map[string]interface{}{
+		"name":     name,
+		"email":    email,
+		"password": password,
+	}, map[string]string{
+		"name":     "required,alpha,min=3",
+		"email":    "required,email",
+		"password": "required,min=8",
+	}); err != nil {
+		return user, err
 	}
+
+	user.id = int64(snowflake.ID())
+	user.name = name
+	user.email = email
+	user.createdAt = time.Now()
+	user.updatedAt = time.Now()
+
 	if err := user.ChangePassword(password); err != nil {
 		return user, err
 	}
@@ -62,10 +75,6 @@ func (u User) UpdatedAt() time.Time {
 }
 
 func (u *User) ChangePassword(password string) error {
-	if len(password) < 8 {
-		return newUserError("validaton.error", "password length should be at least 8 characters")
-	}
-
 	b, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.MinCost)
 	if err != nil {
 		return err

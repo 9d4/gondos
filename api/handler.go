@@ -1,18 +1,18 @@
 package api
 
 import (
-	"errors"
 	"net/http"
-	"os"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/rs/zerolog/log"
+	"github.com/go-chi/chi/v5/middleware"
 
 	"gondos/internal/app"
 )
 
 func NewHandler(app *app.App) http.Handler {
 	r := chi.NewRouter()
+	r.Use(middleware.Recoverer)
+
 	handler := newServer(app)
 
 	return HandlerFromMux(handler, r)
@@ -26,27 +26,6 @@ func newServer(app *app.App) ServerInterface {
 
 type serverImpl struct {
 	app *app.App
-}
-
-func (si serverImpl) deliverErr(w http.ResponseWriter, r *http.Request, err error) {
-	var (
-		appUserErr app.UserError
-	)
-
-	switch {
-	case errors.As(err, &appUserErr):
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte(appUserErr.Message()))
-		return
-	case errors.Is(err, os.ErrPermission):
-		w.WriteHeader(http.StatusForbidden)
-		w.Write([]byte("forbidden"))
-		return
-	}
-
-	w.WriteHeader(http.StatusInternalServerError)
-	w.Write([]byte(err.Error()))
-	log.Debug().Caller().Err(err).Send()
 }
 
 // Register a new account

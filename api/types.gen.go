@@ -25,8 +25,15 @@ type Error struct {
 	Message string `json:"message"`
 }
 
-// Default defines model for default.
-type Default = Error
+// ValidationError defines model for ValidationError.
+type ValidationError struct {
+	Code    string                  `json:"code"`
+	Message string                  `json:"message"`
+	Params  []ValidationErrorParams `json:"params"`
+}
+
+// ValidationErrorParams defines model for ValidationErrorParams.
+type ValidationErrorParams = map[string]interface{}
 
 // AuthRegisterJSONRequestBody defines body for AuthRegister for application/json ContentType.
 type AuthRegisterJSONRequestBody = AuthRegisterRequest
