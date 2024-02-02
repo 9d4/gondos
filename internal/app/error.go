@@ -5,14 +5,16 @@ import (
 )
 
 var (
-	ErrUserRegistered UserError = newUserError(DuplicateErrorKind, "user.registered", "User already registered")
+	ErrUserRegistered       = newUserError(ErrorKindDuplicate, "user.registered", "User already registered")
+	ErrCredentialsIncorrect = newUserError(ErrorKindBad, "credentials.incorrect", "Incorrect email or password")
 )
 
 type ErrorKind string
 
 const (
-	DuplicateErrorKind  ErrorKind = "DUPLICATE"
-	ValidationErrorKind ErrorKind = "VALIDATE"
+	ErrorKindDuplicate  ErrorKind = "DUPLICATE"
+	ErrorKindValidation ErrorKind = "VALIDATE"
+	ErrorKindBad        ErrorKind = "BAD"
 )
 
 type baseError struct {
@@ -22,23 +24,23 @@ type baseError struct {
 	cause   error
 }
 
-func (e baseError) Kind() ErrorKind {
+func (e *baseError) Kind() ErrorKind {
 	return e.kind
 }
 
-func (e baseError) Code() string {
+func (e *baseError) Code() string {
 	return e.code
 }
 
-func (e baseError) Message() string {
+func (e *baseError) Message() string {
 	return e.message
 }
 
-func (e baseError) Error() string {
+func (e *baseError) Error() string {
 	return "app: " + e.code + ": " + e.message
 }
 
-func (e baseError) Cause() error {
+func (e *baseError) Cause() error {
 	return fmt.Errorf("app: "+e.code+": "+e.message+": %w", e.cause)
 }
 
@@ -46,8 +48,8 @@ type InternalError struct{ baseError }
 
 type UserError struct{ baseError }
 
-func newUserError(kind ErrorKind, code string, message string, cause ...error) UserError {
-	ue := UserError{baseError: baseError{
+func newUserError(kind ErrorKind, code string, message string, cause ...error) *UserError {
+	ue := &UserError{baseError: baseError{
 		kind:    kind,
 		code:    code,
 		message: message,

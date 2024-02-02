@@ -3,6 +3,7 @@ package api
 import (
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"os"
 
@@ -11,32 +12,49 @@ import (
 	"gondos/internal/app"
 )
 
+// deliverErr parses errors and responds to client
 func (si serverImpl) deliverErr(w http.ResponseWriter, r *http.Request, err error) {
 	log.Debug().Caller().Err(err).Send()
 	var (
-		appUserErr      app.UserError
-		appValidateErr  app.ValidationError
-		appValidateErrs app.ValidationErrors
+		errJsonSyntax    *json.SyntaxError
+		errJsonMarshaler *json.MarshalerError
+		errAppUser       *app.UserError
+		errAppValidate   app.ValidationError
+		errAppValidates  app.ValidationErrors
 	)
 
-	response := Error{
+	res := Error{
 		Code:    "internal",
 		Message: "Internal server error",
 	}
 
-	deliverCustom := func(status int, data any) {
-		w.WriteHeader(status)
-		json.NewEncoder(w).Encode(data)
-	}
-	deliver := func(status int) {
-		deliverCustom(status, response)
+	sendRes := func(status int) {
+		sendJSON(w, status, res)
 	}
 
 	switch {
-	case errors.As(err, &appUserErr):
-		response.Code = appUserErr.Code()
-		response.Message = appUserErr.Message()
-		deliver(getStatusFromKind(appUserErr.Kind()))
+	case errors.Is(err, io.EOF):
+		res.Code = "input.required"
+		res.Message = "No request body"
+		sendRes(http.StatusBadRequest)
+		return
+
+	case errors.As(err, &errJsonSyntax):
+		res.Code = "json.syntax"
+		res.Message = "Json syntax error"
+		sendRes(http.StatusBadRequest)
+		return
+
+	case errors.As(err, &errJsonMarshaler):
+		res.Code = "json.parse"
+		res.Message = "Cannot parse json"
+		sendRes(http.StatusBadRequest)
+		return
+
+	case errors.As(err, &errAppUser):
+		res.Code = errAppUser.Code()
+		res.Message = errAppUser.Message()
+		sendRes(getStatusFromKind(errAppUser.Kind()))
 		return
 
 	case errors.Is(err, os.ErrPermission):
@@ -44,33 +62,34 @@ func (si serverImpl) deliverErr(w http.ResponseWriter, r *http.Request, err erro
 		w.Write([]byte("forbidden"))
 		return
 
-	case errors.As(err, &appValidateErr):
+	case errors.As(err, &errAppValidate):
 		response := ValidationError{
 			Code:    "validation",
 			Message: "Your request didn't validate. Please check your input and try again.",
 		}
-		response.Params = parseValidationErrorParams(appValidateErr)
+		response.Params = parseValidationErrorParams(errAppValidate)
 
-		deliverCustom(http.StatusUnprocessableEntity, response)
+		sendJSON(w, http.StatusUnprocessableEntity, response)
 		return
 
-	case errors.As(err, &appValidateErrs):
+	case errors.As(err, &errAppValidates):
 		response := ValidationError{
 			Code:    "validation",
 			Message: "Your request didn't validate. Please check your input and try again.",
 		}
 
-		for _, ve := range appValidateErrs {
+		for _, ve := range errAppValidates {
 			response.Params = append(response.Params, parseValidationErrorParams(ve)...)
 		}
 
-		deliverCustom(http.StatusUnprocessableEntity, response)
+		sendJSON(w, http.StatusUnprocessableEntity, response)
 		return
 	}
 
-	deliver(http.StatusInternalServerError)
+	sendRes(http.StatusInternalServerError)
 }
 
+// parseValidationErrorParams converts app.ValidationError to slice of ValidationErrorParams
 func parseValidationErrorParams(err app.ValidationError) []ValidationErrorParams {
 	params := []ValidationErrorParams{}
 
@@ -86,8 +105,9 @@ func parseValidationErrorParams(err app.ValidationError) []ValidationErrorParams
 }
 
 var appErrKindStatus = map[app.ErrorKind]int{
-	app.DuplicateErrorKind:  http.StatusConflict,
-	app.ValidationErrorKind: http.StatusUnprocessableEntity,
+	app.ErrorKindDuplicate:  http.StatusConflict,
+	app.ErrorKindBad:        http.StatusBadRequest,
+	app.ErrorKindValidation: http.StatusUnprocessableEntity,
 }
 
 func getStatusFromKind(kind app.ErrorKind) int {

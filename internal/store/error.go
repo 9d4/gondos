@@ -2,9 +2,10 @@ package store
 
 import (
 	"errors"
-	"gondos/internal/app"
 
 	"github.com/go-sql-driver/mysql"
+
+	"gondos/internal/app"
 )
 
 // handleErr maps error to app Level errors

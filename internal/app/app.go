@@ -5,12 +5,12 @@ type Dependencies struct {
 }
 
 type App struct {
-	Dependencies
+	d Dependencies
 }
 
 func New(d Dependencies) *App {
 	app := &App{
-		Dependencies: d,
+		d: d,
 	}
 
 	return app

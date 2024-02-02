@@ -19,23 +19,52 @@ paths:
         '200':
           description: OK
           content: 
-            application/xml:
+            application/json:
               schema: 
                 $ref: "#/components/schemas/AuthRegisterResponse"
-
         '422':
           description: validation error
           content: 
             application/json:
               schema: 
                 $ref: "#/components/schemas/ValidationError"
-          
         '4xx':
           description: error
           content: 
             application/json:
               schema: 
                 $ref: "#/components/schemas/Error"
+
+  /auth/login:
+    post: 
+      summary: Login
+      description: Returns JWT token on success
+      operationId: authLogin
+      requestBody: 
+        content:
+          application/json:
+            schema: 
+              $ref: "#/components/schemas/AuthLoginRequest"
+      responses: 
+        '200':
+          description: OK
+          content: 
+            application/json:
+              schema: 
+                $ref: "#/components/schemas/AuthLoginResponse"
+        '422':
+          description: validation error
+          content: 
+            application/json:
+              schema: 
+                $ref: "#/components/schemas/ValidationError"
+        '4xx':
+          description: error
+          content: 
+            application/json:
+              schema: 
+                $ref: "#/components/schemas/Error"
+
 security: []
 components: 
   schemas: 
@@ -64,4 +93,7 @@ components:
       $ref: components/schemas/auth-register-request.yml
     AuthRegisterResponse:
       $ref: components/schemas/auth-register-response.yml
-    
+    AuthLoginRequest:
+      $ref: components/schemas/auth-login-request.yml
+    AuthLoginResponse:
+      $ref: components/schemas/auth-login-response.yml

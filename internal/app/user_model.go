@@ -11,6 +11,7 @@ import (
 
 type UserStore interface {
 	Add(context.Context, User) error
+	ByEmail(ctx context.Context, uc UserConstructor, email string) (User, error)
 }
 
 type User struct {
@@ -20,6 +21,14 @@ type User struct {
 	cryptedPassword string
 	createdAt       time.Time
 	updatedAt       time.Time
+}
+
+// UserConstructor makes possible package outside app to create User
+// under control of this package.
+type UserConstructor func(id int64, name, email, cryptedPassword string, createdAt, updatedAt time.Time) User
+
+var userConstructor UserConstructor = func(id int64, name, email, cryptedPassword string, createdAt, updatedAt time.Time) User {
+	return User{id: id, name: name, email: email, cryptedPassword: cryptedPassword, createdAt: createdAt, updatedAt: updatedAt}
 }
 
 func NewUser(name string, email string, password string) (User, error) {

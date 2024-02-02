@@ -43,5 +43,22 @@ func (s *UserStorage) Add(ctx context.Context, user app.User) error {
 	return nil
 }
 
+func (s *UserStorage) ByEmail(ctx context.Context, uc app.UserConstructor, email string) (app.User, error) {
+	stmt := table.Users.SELECT(table.Users.AllColumns)
+	var userModel model.Users
+	if err := stmt.QueryContext(ctx, s.db, &userModel); err != nil {
+		return app.User{}, s.handleErr(err)
+	}
+
+	return uc(
+		userModel.ID,
+		userModel.Name,
+		userModel.Email,
+		userModel.CryptedPassword,
+		userModel.CreatedAt,
+		userModel.UpdatedAt,
+	), nil
+}
+
 // ensure implement app.UserStore
 var _ app.UserStore = &UserStorage{}

@@ -12,6 +12,9 @@ import (
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Login
+	// (POST /auth/login)
+	AuthLogin(w http.ResponseWriter, r *http.Request)
 	// Register a new account
 	// (POST /auth/register)
 	AuthRegister(w http.ResponseWriter, r *http.Request)
@@ -20,6 +23,12 @@ type ServerInterface interface {
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
 
 type Unimplemented struct{}
+
+// Login
+// (POST /auth/login)
+func (_ Unimplemented) AuthLogin(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
 
 // Register a new account
 // (POST /auth/register)
@@ -35,6 +44,21 @@ type ServerInterfaceWrapper struct {
 }
 
 type MiddlewareFunc func(http.Handler) http.Handler
+
+// AuthLogin operation middleware
+func (siw *ServerInterfaceWrapper) AuthLogin(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.AuthLogin(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
 
 // AuthRegister operation middleware
 func (siw *ServerInterfaceWrapper) AuthRegister(w http.ResponseWriter, r *http.Request) {
@@ -164,6 +188,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		ErrorHandlerFunc:   options.ErrorHandlerFunc,
 	}
 
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/auth/login", wrapper.AuthLogin)
+	})
 	r.Group(func(r chi.Router) {
 		r.Post(options.BaseURL+"/auth/register", wrapper.AuthRegister)
 	})
