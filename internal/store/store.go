@@ -7,6 +7,8 @@ import (
 	"gondos/internal/app"
 	"gondos/jetgen/gondos/model"
 	"gondos/jetgen/gondos/table"
+
+	"github.com/go-jet/jet/v2/mysql"
 )
 
 type UserStorage struct {
@@ -44,7 +46,29 @@ func (s *UserStorage) Add(ctx context.Context, user app.User) error {
 }
 
 func (s *UserStorage) ByEmail(ctx context.Context, uc app.UserConstructor, email string) (app.User, error) {
-	stmt := table.Users.SELECT(table.Users.AllColumns)
+	stmt := table.Users.
+		SELECT(table.Users.AllColumns).
+		WHERE(table.Users.Email.EQ(mysql.String(email)))
+	var userModel model.Users
+	if err := stmt.QueryContext(ctx, s.db, &userModel); err != nil {
+		return app.User{}, s.handleErr(err)
+	}
+
+	return uc(
+		userModel.ID,
+		userModel.Name,
+		userModel.Email,
+		userModel.CryptedPassword,
+		userModel.CreatedAt,
+		userModel.UpdatedAt,
+	), nil
+}
+
+// ByID implements app.UserStore.
+func (s *UserStorage) ByID(ctx context.Context, uc app.UserConstructor, id int64) (app.User, error) {
+	stmt := table.Users.
+		SELECT(table.Users.AllColumns).
+		WHERE(table.Users.ID.EQ(mysql.Int64(id)))
 	var userModel model.Users
 	if err := stmt.QueryContext(ctx, s.db, &userModel); err != nil {
 		return app.User{}, s.handleErr(err)

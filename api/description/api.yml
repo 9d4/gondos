@@ -65,6 +65,23 @@ paths:
               schema: 
                 $ref: "#/components/schemas/Error"
 
+  /user:
+    get:
+      summary: Get authenticated user
+      responses: 
+        '200':
+          description: user
+          content: 
+            application/json:
+              schema: 
+                $ref: "#/components/schemas/User"
+        '4xx':
+          description: error
+          content: 
+            application/json:
+              schema: 
+                $ref: "#/components/schemas/Error"
+
 security: []
 components: 
   schemas: 
@@ -97,3 +114,20 @@ components:
       $ref: components/schemas/auth-login-request.yml
     AuthLoginResponse:
       $ref: components/schemas/auth-login-response.yml
+    User:
+      type: object
+      required: [id, name, email, created_at, updated_at]
+      properties: 
+        id:
+          type: integer
+          x-go-type: int64
+        name:
+          type: string
+        email:
+          type: string
+        created_at:
+          type: string
+          x-go-type: time.Time
+        updated_at:
+          type: string
+          x-go-type: time.Time

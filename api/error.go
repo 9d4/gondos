@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 
+	"github.com/go-chi/jwtauth/v5"
 	"github.com/rs/zerolog/log"
 
 	"gondos/internal/app"
@@ -37,6 +38,12 @@ func (si serverImpl) deliverErr(w http.ResponseWriter, r *http.Request, err erro
 		res.Code = "input.required"
 		res.Message = "No request body"
 		sendRes(http.StatusBadRequest)
+		return
+
+	case isJWTAuthError(err):
+		res.Code = "unauthorized"
+		res.Message = "Authentication required"
+		sendRes(http.StatusUnauthorized)
 		return
 
 	case errors.As(err, &errJsonSyntax):
@@ -89,6 +96,20 @@ func (si serverImpl) deliverErr(w http.ResponseWriter, r *http.Request, err erro
 	sendRes(http.StatusInternalServerError)
 }
 
+var appErrKindStatus = map[app.ErrorKind]int{
+	app.ErrorKindBad:        http.StatusBadRequest,
+	app.ErrorKindNotFound:   http.StatusNotFound,
+	app.ErrorKindDuplicate:  http.StatusConflict,
+	app.ErrorKindValidation: http.StatusUnprocessableEntity,
+}
+
+func getStatusFromKind(kind app.ErrorKind) int {
+	if i, ok := appErrKindStatus[kind]; ok {
+		return i
+	}
+	return http.StatusInternalServerError
+}
+
 // parseValidationErrorParams converts app.ValidationError to slice of ValidationErrorParams
 func parseValidationErrorParams(err app.ValidationError) []ValidationErrorParams {
 	params := []ValidationErrorParams{}
@@ -104,15 +125,11 @@ func parseValidationErrorParams(err app.ValidationError) []ValidationErrorParams
 	return params
 }
 
-var appErrKindStatus = map[app.ErrorKind]int{
-	app.ErrorKindDuplicate:  http.StatusConflict,
-	app.ErrorKindBad:        http.StatusBadRequest,
-	app.ErrorKindValidation: http.StatusUnprocessableEntity,
-}
-
-func getStatusFromKind(kind app.ErrorKind) int {
-	if i, ok := appErrKindStatus[kind]; ok {
-		return i
-	}
-	return http.StatusInternalServerError
+func isJWTAuthError(err error) bool {
+	return errors.Is(err, jwtauth.ErrUnauthorized) ||
+		errors.Is(err, jwtauth.ErrExpired) ||
+		errors.Is(err, jwtauth.ErrNBFInvalid) ||
+		errors.Is(err, jwtauth.ErrIATInvalid) ||
+		errors.Is(err, jwtauth.ErrNoTokenFound) ||
+		errors.Is(err, jwtauth.ErrAlgoInvalid)
 }

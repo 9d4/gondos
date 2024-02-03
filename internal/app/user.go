@@ -23,3 +23,17 @@ func (app *App) AuthEmail(ctx context.Context, email string, password string) (U
 
 	return user, nil
 }
+
+func (app *App) AuthenticatedUser(ctx context.Context) (User, error) {
+	id, err := UserIDFromCtx(ctx)
+	if err != nil {
+		return User{}, err
+	}
+
+	user, err := app.d.UserStore.ByID(ctx, userConstructor, id)
+	if err != nil {
+		return user, err
+	}
+
+	return user, nil
+}

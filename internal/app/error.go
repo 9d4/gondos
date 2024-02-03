@@ -6,6 +6,7 @@ import (
 
 var (
 	ErrUserRegistered       = newUserError(ErrorKindDuplicate, "user.registered", "User already registered")
+	ErrUserNotFound         = newUserError(ErrorKindNotFound, "user.not_found", "User not found")
 	ErrCredentialsIncorrect = newUserError(ErrorKindBad, "credentials.incorrect", "Incorrect email or password")
 )
 
@@ -15,6 +16,7 @@ const (
 	ErrorKindDuplicate  ErrorKind = "DUPLICATE"
 	ErrorKindValidation ErrorKind = "VALIDATE"
 	ErrorKindBad        ErrorKind = "BAD"
+	ErrorKindNotFound   ErrorKind = "NOTFOUND"
 )
 
 type baseError struct {

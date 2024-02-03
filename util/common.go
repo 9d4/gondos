@@ -7,4 +7,5 @@ import (
 
 func IsDevel() bool {
 	return strings.ToLower(os.Getenv("ENV")) == "development"
+
 }

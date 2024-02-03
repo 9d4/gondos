@@ -12,6 +12,7 @@ import (
 type UserStore interface {
 	Add(context.Context, User) error
 	ByEmail(ctx context.Context, uc UserConstructor, email string) (User, error)
+	ByID(ctx context.Context, uc UserConstructor, id int64) (User, error)
 }
 
 type User struct {
