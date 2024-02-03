@@ -4,11 +4,11 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/go-jet/jet/v2/mysql"
+
 	"gondos/internal/app"
 	"gondos/jetgen/gondos/model"
 	"gondos/jetgen/gondos/table"
-
-	"github.com/go-jet/jet/v2/mysql"
 )
 
 type UserStorage struct {

@@ -14,7 +14,7 @@ import (
 	"gondos/api"
 	"gondos/db"
 	"gondos/internal/app"
-	"gondos/internal/store"
+	store "gondos/stores/mysql"
 )
 
 type serveCmd struct {
