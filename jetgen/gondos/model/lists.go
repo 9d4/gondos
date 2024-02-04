@@ -16,6 +16,6 @@ type Lists struct {
 	UserID      *int64
 	Title       string
 	Description *string
-	CreatedAt   *time.Time
-	UpdatedAt   *time.Time
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
 }

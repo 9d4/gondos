@@ -3,8 +3,10 @@ package store
 import (
 	"context"
 	"database/sql"
+	"errors"
 
 	"github.com/go-jet/jet/v2/mysql"
+	"github.com/go-jet/jet/v2/qrm"
 
 	"gondos/internal/app"
 	"gondos/jetgen/gondos/model"
@@ -86,3 +88,45 @@ func (s *UserStorage) ByID(ctx context.Context, uc app.UserConstructor, id int64
 
 // ensure implement app.UserStore
 var _ app.UserStore = &UserStorage{}
+
+type ListStorage struct {
+	db *sql.DB
+}
+
+func NewListStore(db *sql.DB) app.ListStore {
+	return &ListStorage{db: db}
+}
+
+// CreateList implements app.ListStore.
+func (s *ListStorage) CreateList(ctx context.Context, ownerID int64, list app.List) error {
+	tx, _ := s.db.Begin()
+	userStmt := table.Users.SELECT(table.Users.ID).WHERE(table.Users.ID.EQ(mysql.Int64(ownerID)))
+	if err := userStmt.QueryContext(ctx, tx, &model.Users{}); err != nil {
+		if errors.Is(err, qrm.ErrNoRows) {
+			return app.ErrUserNotFound
+		}
+		return err
+	}
+
+	model := model.Lists{
+		ID:          list.ID(),
+		UserID:      &ownerID,
+		Title:       list.Title(),
+		Description: ptr(list.Description()),
+		CreatedAt:   list.CreatedAt(),
+		UpdatedAt:   list.UpdatedAt(),
+	}
+
+	insertStmt := table.Lists.INSERT(table.Lists.AllColumns).MODEL(model)
+	if _, err := insertStmt.ExecContext(ctx, tx); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+var _ app.ListStore = &ListStorage{}
+
+func ptr[T any](value T) *T {
+	return &value
+}

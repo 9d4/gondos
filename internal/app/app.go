@@ -2,6 +2,7 @@ package app
 
 type Dependencies struct {
 	UserStore UserStore
+	ListStore ListStore
 }
 
 type App struct {

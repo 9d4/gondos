@@ -81,6 +81,25 @@ paths:
             application/json:
               schema: 
                 $ref: "#/components/schemas/Error"
+            
+  /user/lists:
+    post: 
+      summary: Create new list
+      requestBody: 
+        content: 
+          application/json:
+            schema: 
+              $ref: "#/components/schemas/ListCreateRequest"
+      responses: 
+        '201':
+          description: Created
+        '4xx':
+          description: error
+          content: 
+            application/json:
+              schema: 
+                $ref: "#/components/schemas/Error"
+      
 
 security: []
 components: 
@@ -131,3 +150,34 @@ components:
         updated_at:
           type: string
           x-go-type: time.Time
+    List:
+      type: object
+      required: [id, title, description, created_at, updated_at]
+      properties: 
+        id:
+          type: integer
+          x-go-type: int64
+        title:
+          type: string
+        description:
+          type: string
+        created_at:
+          type: string
+          x-go-type: time.Time
+        updated_at:
+          type: string
+          x-go-type: time.Time
+    ListCreateRequest:
+      type: object
+      required: [title, description]
+      properties: 
+        title:
+          type: string
+        description:
+          type: string
+
+  securitySchemes:
+    bearerAuth:            # arbitrary name for the security scheme
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

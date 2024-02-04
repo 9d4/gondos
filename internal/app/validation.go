@@ -46,7 +46,8 @@ func validateField(v *validator.Validate, fieldName string, field interface{}, t
 	return nil
 }
 
-// validateFields runs validateField in parallel
+// validateFields runs validateField in parallel.
+// The returned error type is ValidationErrors
 func validateFields(v *validator.Validate, fields map[string]interface{}, rules map[string]string) error {
 	var wg sync.WaitGroup
 	errCh := make(chan error, len(fields))

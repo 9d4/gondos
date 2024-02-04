@@ -61,6 +61,7 @@ func (c *serveCmd) run(cmd *cobra.Command, args []string) {
 
 	app := app.New(app.Dependencies{
 		UserStore: store.NewUserStore(db_),
+		ListStore: store.NewListStore(db_),
 	})
 
 	handler := api.NewHandler(app)

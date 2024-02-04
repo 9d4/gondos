@@ -14,8 +14,8 @@ CREATE TABLE `lists` (
   `user_id` bigint(20) DEFAULT NULL,
   `title` varchar(100) NOT NULL,
   `description` varchar(255) DEFAULT NULL,
-  `created_at` datetime(3) DEFAULT current_timestamp(),
-  `updated_at` datetime(3) DEFAULT current_timestamp(),
+  `created_at` datetime(3) NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime(3) NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `idx_lists_user_id` (`user_id`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;

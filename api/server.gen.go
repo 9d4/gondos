@@ -21,6 +21,9 @@ type ServerInterface interface {
 	// Get authenticated user
 	// (GET /user)
 	GetUser(w http.ResponseWriter, r *http.Request)
+	// Create new list
+	// (POST /user/lists)
+	PostUserLists(w http.ResponseWriter, r *http.Request)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -42,6 +45,12 @@ func (_ Unimplemented) AuthRegister(w http.ResponseWriter, r *http.Request) {
 // Get authenticated user
 // (GET /user)
 func (_ Unimplemented) GetUser(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Create new list
+// (POST /user/lists)
+func (_ Unimplemented) PostUserLists(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -90,6 +99,21 @@ func (siw *ServerInterfaceWrapper) GetUser(w http.ResponseWriter, r *http.Reques
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		siw.Handler.GetUser(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// PostUserLists operation middleware
+func (siw *ServerInterfaceWrapper) PostUserLists(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.PostUserLists(w, r)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -220,6 +244,9 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 	})
 	r.Group(func(r chi.Router) {
 		r.Get(options.BaseURL+"/user", wrapper.GetUser)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/user/lists", wrapper.PostUserLists)
 	})
 
 	return r

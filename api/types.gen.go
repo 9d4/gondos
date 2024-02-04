@@ -40,6 +40,12 @@ type Error struct {
 	Message string `json:"message"`
 }
 
+// ListCreateRequest defines model for ListCreateRequest.
+type ListCreateRequest struct {
+	Description string `json:"description"`
+	Title       string `json:"title"`
+}
+
 // User defines model for User.
 type User struct {
 	CreatedAt time.Time `json:"created_at"`
@@ -64,3 +70,6 @@ type AuthLoginJSONRequestBody = AuthLoginRequest
 
 // AuthRegisterJSONRequestBody defines body for AuthRegister for application/json ContentType.
 type AuthRegisterJSONRequestBody = AuthRegisterRequest
+
+// PostUserListsJSONRequestBody defines body for PostUserLists for application/json ContentType.
+type PostUserListsJSONRequestBody = ListCreateRequest

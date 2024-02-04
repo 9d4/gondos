@@ -44,6 +44,31 @@ type serverImpl struct {
 	app *app.App
 }
 
+// PostUserLists implements ServerInterface.
+func (si *serverImpl) PostUserLists(w http.ResponseWriter, r *http.Request) {
+	if err := authenticate(r); err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+
+	var request ListCreateRequest
+	if err := parseJSON(r, &request); err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+	list, err := app.NewList(request.Title, request.Description)
+	if err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+
+	if err := si.app.UserCreateList(r.Context(), list); err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+	w.WriteHeader(http.StatusCreated)
+}
+
 // GetUser implements ServerInterface.
 func (si *serverImpl) GetUser(w http.ResponseWriter, r *http.Request) {
 	if err := authenticate(r); err != nil {
