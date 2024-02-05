@@ -169,6 +169,25 @@ func (si *ListStorage) UpdateList(ctx context.Context, userID int64, listID int6
 	return tx.Commit()
 }
 
+// DeleteList implements app.ListStore.
+func (s *ListStorage) DeleteList(ctx context.Context, userID int64, listID int64) error {
+	tx, _ := s.db.Begin()
+	if err := getOnelistStmt(userID, listID).QueryContext(ctx, tx, &model.Lists{}); err != nil {
+		return err
+	}
+
+	stmt := table.Lists.DELETE().WHERE(table.Lists.ID.EQ(mysql.Int64(listID)))
+	if _, err := stmt.ExecContext(ctx, tx); err != nil {
+		return err
+	}
+	stmt = table.ListItems.DELETE().WHERE(table.ListItems.ListID.EQ(mysql.Int64(listID)))
+	if _, err := stmt.ExecContext(ctx, tx); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
 // AddItemToList implements app.ListStore.
 func (s *ListStorage) AddItemToList(ctx context.Context, userID int64, item app.ListItem) error {
 	tx, _ := s.db.Begin()
@@ -189,6 +208,75 @@ func (s *ListStorage) AddItemToList(ctx context.Context, userID int64, item app.
 		return err
 	}
 
+	return tx.Commit()
+}
+
+// ListItems implements app.ListStore.
+func (s *ListStorage) ListItems(ctx context.Context, listItemConstructor app.ListItemConstructor, userID, listID int64) ([]app.ListItem, error) {
+	stmt := table.ListItems.SELECT(table.ListItems.AllColumns).
+		FROM(table.ListItems.INNER_JOIN(table.Lists, table.Lists.ID.EQ(table.ListItems.ListID))).
+		WHERE(mysql.AND(
+			table.Lists.ID.EQ(mysql.Int64(listID)),
+			table.Lists.UserID.EQ(mysql.Int64(userID)),
+		))
+	var models []model.ListItems
+	if err := stmt.QueryContext(ctx, s.db, &models); err != nil {
+		return nil, err
+	}
+
+	items := make([]app.ListItem, 0)
+	for _, v := range models {
+		items = append(items, listItemConstructor(v.ID, v.ListID, v.Body, v.CreatedAt, v.UpdatedAt))
+	}
+
+	return items, nil
+}
+
+var getListItemStmt = func(itemID int64, userID int64, sel mysql.Projection, selects ...mysql.Projection) mysql.SelectStatement {
+	return table.ListItems.
+		SELECT(sel, selects...).
+		FROM(
+			table.ListItems.INNER_JOIN(table.Lists, table.Lists.ID.EQ(table.ListItems.ListID)),
+		).
+		WHERE(mysql.AND(
+			table.ListItems.ID.EQ(mysql.Int64(itemID)),
+			table.Lists.UserID.EQ(mysql.Int64(userID)),
+		))
+}
+
+// UpdateListItem implements app.ListStore.
+func (s *ListStorage) UpdateListItem(ctx context.Context, userID int64, itemID int64, body string) error {
+	tx, _ := s.db.Begin()
+	stmt := getListItemStmt(itemID, userID, table.ListItems.ID)
+	if err := stmt.QueryContext(ctx, tx, &model.ListItems{}); err != nil {
+		return err
+	}
+
+	model := model.ListItems{
+		Body:      body,
+		UpdatedAt: time.Now(),
+	}
+	updateStmt := table.ListItems.
+		UPDATE(table.ListItems.Body, table.ListItems.UpdatedAt).
+		MODEL(model).
+		WHERE(table.ListItems.ID.EQ(mysql.Int64(itemID)))
+	if _, err := updateStmt.ExecContext(ctx, tx); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// DeleteListItem implements app.ListStore.
+func (s *ListStorage) DeleteListItem(ctx context.Context, userID int64, itemID int64) error {
+	tx, _ := s.db.Begin()
+	stmt := getListItemStmt(itemID, userID, table.ListItems.ID)
+	if err := stmt.QueryContext(ctx, tx, &model.ListItems{}); err != nil {
+		return err
+	}
+	delStmt := table.ListItems.DELETE().WHERE(table.ListItems.ID.EQ(mysql.Int64(itemID)))
+	if _, err := delStmt.ExecContext(ctx, tx); err != nil {
+		return err
+	}
 	return tx.Commit()
 }
 

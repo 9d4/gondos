@@ -11,7 +11,11 @@ type ListStore interface {
 	CreateList(ctx context.Context, list List) error
 	Lists(ctx context.Context, listConstructor ListConstructor, userID int64) ([]List, error)
 	UpdateList(ctx context.Context, userID, listID int64, title, description string) error
+	DeleteList(ctx context.Context, userID, listID int64) error
 	AddItemToList(ctx context.Context, userID int64, item ListItem) error
+	ListItems(ctx context.Context, listItemConstructor ListItemConstructor, userID, listID int64) ([]ListItem, error)
+	UpdateListItem(ctx context.Context, userID, itemID int64, body string) error
+	DeleteListItem(ctx context.Context, userID, itemID int64) error
 }
 
 type ListConstructor func(id, ownerID int64, title, description string, createdAt, updatedAt time.Time) List
@@ -79,6 +83,18 @@ func NewList(title, description string) (List, error) {
 	list.updatedAt = time.Now()
 
 	return list, nil
+}
+
+type ListItemConstructor func(id, listID int64, body string, createdAt, updatedAt time.Time) ListItem
+
+var listItemConstructor ListItemConstructor = func(id, listID int64, body string, createdAt, updatedAt time.Time) ListItem {
+	return ListItem{
+		id:        id,
+		listID:    listID,
+		body:      body,
+		createdAt: createdAt,
+		updatedAt: updatedAt,
+	}
 }
 
 type ListItem struct {

@@ -60,6 +60,17 @@ type ListCreateRequest struct {
 	Title       string `json:"title"`
 }
 
+// ListItem defines model for ListItem.
+type ListItem struct {
+	Body      string    `json:"body"`
+	CreatedAt time.Time `json:"created_at"`
+	Id        int64     `json:"id"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+// ListItemUpdateRequest defines model for ListItemUpdateRequest.
+type ListItemUpdateRequest = AddItemToListRequest
+
 // ListUpdateRequest defines model for ListUpdateRequest.
 type ListUpdateRequest = ListCreateRequest
 
@@ -82,6 +93,9 @@ type ValidationError struct {
 // ValidationErrorParams defines model for ValidationErrorParams.
 type ValidationErrorParams = map[string]interface{}
 
+// PathItemID defines model for pathItemID.
+type PathItemID = int
+
 // PathListID defines model for pathListID.
 type PathListID = int
 
@@ -99,3 +113,6 @@ type UserListUpdateJSONRequestBody = ListUpdateRequest
 
 // ListAddItemJSONRequestBody defines body for ListAddItem for application/json ContentType.
 type ListAddItemJSONRequestBody = AddItemToListRequest
+
+// UpdateListItemJSONRequestBody defines body for UpdateListItem for application/json ContentType.
+type UpdateListItemJSONRequestBody = ListItemUpdateRequest

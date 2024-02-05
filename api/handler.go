@@ -44,6 +44,69 @@ type serverImpl struct {
 	app *app.App
 }
 
+// ListItems implements ServerInterface.
+func (si *serverImpl) ListItems(w http.ResponseWriter, r *http.Request, listId int) {
+	if err := authenticate(r); err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+
+	items, err := si.app.UserListItems(r.Context(), int64(listId))
+	if err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+
+	res := make([]ListItem, 0)
+	for _, v := range items {
+		res = append(res, ListItem{
+			Id:        v.ID(),
+			Body:      v.Body(),
+			CreatedAt: v.CreatedAt(),
+			UpdatedAt: v.UpdatedAt(),
+		})
+	}
+
+	sendJSON(w, http.StatusOK, res)
+}
+
+// UpdateListItem implements ServerInterface.
+func (si *serverImpl) UpdateListItem(w http.ResponseWriter, r *http.Request, listId int, itemId int) {
+	if err := authenticate(r); err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+
+	var request ListItemUpdateRequest
+	if err := parseJSON(r, &request); err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+	item, err := app.NewListItem(int64(listId), request.Body)
+	if err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+
+	if err := si.app.UserUpdateListItem(r.Context(), int64(itemId), item.Body()); err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+}
+
+// DeleteListItem implements ServerInterface.
+func (si *serverImpl) DeleteListItem(w http.ResponseWriter, r *http.Request, listId int, itemId int) {
+	if err := authenticate(r); err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+
+	if err := si.app.UserDeleteListItem(r.Context(), int64(itemId)); err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+}
+
 // PostUserLists implements ServerInterface.
 func (si *serverImpl) UserCreateList(w http.ResponseWriter, r *http.Request) {
 	if err := authenticate(r); err != nil {
@@ -124,6 +187,19 @@ func (si *serverImpl) UserListUpdate(w http.ResponseWriter, r *http.Request, lis
 		list.Title(),
 		list.Description(),
 	); err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+}
+
+// UserDeleteList implements ServerInterface.
+func (si *serverImpl) UserDeleteList(w http.ResponseWriter, r *http.Request, listId int) {
+	if err := authenticate(r); err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+
+	if err := si.app.UserDeleteList(r.Context(), int64(listId)); err != nil {
 		si.deliverErr(w, r, err)
 		return
 	}
