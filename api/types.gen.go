@@ -7,6 +7,11 @@ import (
 	"time"
 )
 
+// AddItemToListRequest defines model for AddItemToListRequest.
+type AddItemToListRequest struct {
+	Body string `json:"body"`
+}
+
 // AuthLoginRequest defines model for AuthLoginRequest.
 type AuthLoginRequest struct {
 	Email    string `json:"email"`
@@ -40,11 +45,23 @@ type Error struct {
 	Message string `json:"message"`
 }
 
+// List defines model for List.
+type List struct {
+	CreatedAt   time.Time `json:"created_at"`
+	Description string    `json:"description"`
+	Id          int64     `json:"id"`
+	Title       string    `json:"title"`
+	UpdatedAt   time.Time `json:"updated_at"`
+}
+
 // ListCreateRequest defines model for ListCreateRequest.
 type ListCreateRequest struct {
 	Description string `json:"description"`
 	Title       string `json:"title"`
 }
+
+// ListUpdateRequest defines model for ListUpdateRequest.
+type ListUpdateRequest = ListCreateRequest
 
 // User defines model for User.
 type User struct {
@@ -65,11 +82,20 @@ type ValidationError struct {
 // ValidationErrorParams defines model for ValidationErrorParams.
 type ValidationErrorParams = map[string]interface{}
 
+// PathListID defines model for pathListID.
+type PathListID = int
+
 // AuthLoginJSONRequestBody defines body for AuthLogin for application/json ContentType.
 type AuthLoginJSONRequestBody = AuthLoginRequest
 
 // AuthRegisterJSONRequestBody defines body for AuthRegister for application/json ContentType.
 type AuthRegisterJSONRequestBody = AuthRegisterRequest
 
-// PostUserListsJSONRequestBody defines body for PostUserLists for application/json ContentType.
-type PostUserListsJSONRequestBody = ListCreateRequest
+// UserCreateListJSONRequestBody defines body for UserCreateList for application/json ContentType.
+type UserCreateListJSONRequestBody = ListCreateRequest
+
+// UserListUpdateJSONRequestBody defines body for UserListUpdate for application/json ContentType.
+type UserListUpdateJSONRequestBody = ListUpdateRequest
+
+// ListAddItemJSONRequestBody defines body for ListAddItem for application/json ContentType.
+type ListAddItemJSONRequestBody = AddItemToListRequest

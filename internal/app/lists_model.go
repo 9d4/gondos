@@ -8,12 +8,28 @@ import (
 )
 
 type ListStore interface {
-	CreateList(ctx context.Context, ownerID int64, list List) error
+	CreateList(ctx context.Context, list List) error
+	Lists(ctx context.Context, listConstructor ListConstructor, userID int64) ([]List, error)
+	UpdateList(ctx context.Context, userID, listID int64, title, description string) error
+	AddItemToList(ctx context.Context, userID int64, item ListItem) error
+}
+
+type ListConstructor func(id, ownerID int64, title, description string, createdAt, updatedAt time.Time) List
+
+var listConstructor ListConstructor = func(id, ownerID int64, title, description string, createdAt, updatedAt time.Time) List {
+	return List{
+		id:          id,
+		ownerID:     ownerID,
+		title:       title,
+		description: description,
+		createdAt:   createdAt,
+		updatedAt:   updatedAt,
+	}
 }
 
 type List struct {
 	id          int64
-	owner       User
+	ownerID     int64
 	title       string
 	description string
 	createdAt   time.Time
@@ -24,8 +40,8 @@ func (l List) ID() int64 {
 	return l.id
 }
 
-func (l List) Owner() User {
-	return l.owner
+func (l List) OwnerID() int64 {
+	return l.ownerID
 }
 
 func (l List) Title() string {
@@ -63,4 +79,53 @@ func NewList(title, description string) (List, error) {
 	list.updatedAt = time.Now()
 
 	return list, nil
+}
+
+type ListItem struct {
+	id        int64
+	listID    int64
+	body      string
+	createdAt time.Time
+	updatedAt time.Time
+}
+
+func (i ListItem) ID() int64 {
+	return i.id
+}
+
+func (i ListItem) ListID() int64 {
+	return i.listID
+}
+
+func (i ListItem) Body() string {
+	return i.body
+}
+
+func (i ListItem) CreatedAt() time.Time {
+	return i.createdAt
+}
+
+func (i ListItem) UpdatedAt() time.Time {
+	return i.updatedAt
+}
+
+func NewListItem(listID int64, body string) (ListItem, error) {
+	var item ListItem
+
+	if err := validateFields(validate, map[string]interface{}{
+		"list_id": listID,
+		"body":    body,
+	}, map[string]string{
+		"list_id": "required,gt=0",
+		"body":    "required,min=1",
+	}); err != nil {
+		return item, err
+	}
+	item.id = int64(snowflake.ID())
+	item.listID = listID
+	item.body = body
+	item.createdAt = time.Now()
+	item.updatedAt = time.Now()
+
+	return item, nil
 }

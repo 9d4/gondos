@@ -14,14 +14,17 @@ require (
 	github.com/godruoyi/go-snowflake v0.0.2
 	github.com/joho/godotenv v1.5.1
 	github.com/lestrrat-go/jwx/v2 v2.0.19
+	github.com/oapi-codegen/runtime v1.1.1
 	github.com/rs/zerolog v1.31.0
 	github.com/spf13/cobra v1.8.0
+	github.com/stretchr/testify v1.8.4
 	github.com/vektah/gqlparser/v2 v2.5.11
 	golang.org/x/crypto v0.18.0
 )
 
 require (
 	github.com/agnivade/levenshtein v1.1.1 // indirect
+	github.com/apapsch/go-jsonmerge/v2 v2.0.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.3 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.2.0 // indirect
@@ -44,7 +47,6 @@ require (
 	github.com/segmentio/asm v1.2.0 // indirect
 	github.com/sosodev/duration v1.2.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
-	github.com/stretchr/testify v1.8.4 // indirect
 	github.com/urfave/cli/v2 v2.27.1 // indirect
 	github.com/xrash/smetrics v0.0.0-20231213231151-1d8dd44e695e // indirect
 	golang.org/x/mod v0.14.0 // indirect

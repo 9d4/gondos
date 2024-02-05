@@ -23,9 +23,9 @@ CREATE TABLE `lists` (
 CREATE TABLE `list_items` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `list_id` bigint(20) NOT NULL,
-  `body` varchar(255) DEFAULT NULL,
-  `created_at` datetime(3) DEFAULT current_timestamp(),
-  `updated_at` datetime(3) DEFAULT current_timestamp(),
+  `body` varchar(255) NOT NULL,
+  `created_at` datetime(3) NOT NULL DEFAULT current_timestamp(),
+  `updated_at` datetime(3) NOT NULL DEFAULT current_timestamp(),
   PRIMARY KEY (`id`),
   KEY `idx_list_items_list_id` (`list_id`)
 ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4;

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"errors"
+	"time"
 
 	"github.com/go-jet/jet/v2/mysql"
 	"github.com/go-jet/jet/v2/qrm"
@@ -97,10 +98,19 @@ func NewListStore(db *sql.DB) app.ListStore {
 	return &ListStorage{db: db}
 }
 
+var getOnelistStmt = func(userID, listID int64) mysql.SelectStatement {
+	return table.Lists.
+		SELECT(table.Lists.UserID).
+		WHERE(mysql.AND(
+			table.Lists.UserID.EQ(mysql.Int64(userID)),
+			table.Lists.ID.EQ(mysql.Int64(listID)),
+		))
+}
+
 // CreateList implements app.ListStore.
-func (s *ListStorage) CreateList(ctx context.Context, ownerID int64, list app.List) error {
+func (s *ListStorage) CreateList(ctx context.Context, list app.List) error {
 	tx, _ := s.db.Begin()
-	userStmt := table.Users.SELECT(table.Users.ID).WHERE(table.Users.ID.EQ(mysql.Int64(ownerID)))
+	userStmt := table.Users.SELECT(table.Users.ID).WHERE(table.Users.ID.EQ(mysql.Int64(list.OwnerID())))
 	if err := userStmt.QueryContext(ctx, tx, &model.Users{}); err != nil {
 		if errors.Is(err, qrm.ErrNoRows) {
 			return app.ErrUserNotFound
@@ -110,7 +120,7 @@ func (s *ListStorage) CreateList(ctx context.Context, ownerID int64, list app.Li
 
 	model := model.Lists{
 		ID:          list.ID(),
-		UserID:      &ownerID,
+		UserID:      ptr(list.OwnerID()),
 		Title:       list.Title(),
 		Description: ptr(list.Description()),
 		CreatedAt:   list.CreatedAt(),
@@ -118,6 +128,63 @@ func (s *ListStorage) CreateList(ctx context.Context, ownerID int64, list app.Li
 	}
 
 	insertStmt := table.Lists.INSERT(table.Lists.AllColumns).MODEL(model)
+	if _, err := insertStmt.ExecContext(ctx, tx); err != nil {
+		return err
+	}
+
+	return tx.Commit()
+}
+
+// Lists implements app.ListStore.
+func (s *ListStorage) Lists(ctx context.Context, listConstructor app.ListConstructor, userID int64) ([]app.List, error) {
+	var listModels []model.Lists
+
+	stmt := table.Lists.SELECT(table.Lists.AllColumns).WHERE(table.Lists.UserID.EQ(mysql.Int64(userID)))
+	if err := stmt.QueryContext(ctx, s.db, &listModels); err != nil {
+		return nil, err
+	}
+
+	var lists []app.List
+	for _, v := range listModels {
+		lists = append(lists, listConstructor(v.ID, *v.UserID, v.Title, *v.Description, v.CreatedAt, v.UpdatedAt))
+	}
+
+	return lists, nil
+}
+
+// UpdateList implements app.ListStore.
+func (si *ListStorage) UpdateList(ctx context.Context, userID int64, listID int64, title, description string) error {
+	tx, _ := si.db.Begin()
+	if err := getOnelistStmt(userID, listID).QueryContext(ctx, tx, &model.Lists{}); err != nil {
+		return err
+	}
+
+	updateStmt := table.Lists.
+		UPDATE(table.Lists.Title, table.Lists.Description, table.Lists.UpdatedAt).
+		SET(title, description, time.Now()).
+		WHERE(table.Lists.ID.EQ(mysql.Int64(listID)))
+	if _, err := updateStmt.ExecContext(ctx, tx); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// AddItemToList implements app.ListStore.
+func (s *ListStorage) AddItemToList(ctx context.Context, userID int64, item app.ListItem) error {
+	tx, _ := s.db.Begin()
+
+	if err := getOnelistStmt(userID, item.ListID()).QueryContext(ctx, tx, &model.Lists{}); err != nil {
+		return err
+	}
+
+	model := model.ListItems{
+		ID:        item.ID(),
+		ListID:    item.ListID(),
+		Body:      item.Body(),
+		CreatedAt: item.CreatedAt(),
+		UpdatedAt: item.UpdatedAt(),
+	}
+	insertStmt := table.ListItems.INSERT(table.ListItems.AllColumns).MODEL(model)
 	if _, err := insertStmt.ExecContext(ctx, tx); err != nil {
 		return err
 	}

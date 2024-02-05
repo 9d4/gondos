@@ -85,6 +85,7 @@ paths:
   /user/lists:
     post: 
       summary: Create new list
+      operationId: userCreateList
       requestBody: 
         content: 
           application/json:
@@ -99,7 +100,66 @@ paths:
             application/json:
               schema: 
                 $ref: "#/components/schemas/Error"
+    get: 
+      summary: Get user's lists
+      operationId: userLists
+      responses: 
+        '200':
+          description: OK
+          content: 
+            application/json:
+              schema: 
+                type: array
+                items: 
+                  $ref: "#/components/schemas/List"
+        '4xx':
+          description: error
+          content: 
+            application/json:
+              schema: 
+                $ref: "#/components/schemas/Error"
+  /user/lists/{list_id}:
+    patch: 
+      summary: Update list
+      operationId: userListUpdate
+      parameters: 
+        - $ref: "#/components/parameters/pathListID"
+      requestBody: 
+        content: 
+          application/json:
+            schema: 
+              $ref: "#/components/schemas/ListUpdateRequest"
+      responses: 
+        '200':
+          description: OK
+        '4xx':
+          description: error
+          content: 
+            application/json:
+              schema: 
+                $ref: "#/components/schemas/Error"
+        
       
+    post: 
+      summary: Add item to list
+      operationId: listAddItem
+      parameters: 
+        - $ref: "#/components/parameters/pathListID"
+      requestBody: 
+        content: 
+          application/json:
+            schema: 
+              $ref: "#/components/schemas/AddItemToListRequest"
+      responses: 
+        '201':
+          description: Created
+        '4xx':
+          description: error
+          content: 
+            application/json:
+              schema: 
+                $ref: "#/components/schemas/Error"
+  
 
 security: []
 components: 
@@ -175,6 +235,23 @@ components:
           type: string
         description:
           type: string
+    ListUpdateRequest:
+      $ref: "#/components/schemas/ListCreateRequest"
+    AddItemToListRequest:
+      type: object
+      required: [body] 
+      properties: 
+        body:
+          type: string
+
+  parameters: 
+    pathListID:
+        in: path
+        name: list_id
+        schema: 
+          type: integer
+        required: true
+        description: ID of the list
 
   securitySchemes:
     bearerAuth:            # arbitrary name for the security scheme

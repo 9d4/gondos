@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
+	"github.com/oapi-codegen/runtime"
 )
 
 // ServerInterface represents all server handlers.
@@ -21,9 +22,18 @@ type ServerInterface interface {
 	// Get authenticated user
 	// (GET /user)
 	GetUser(w http.ResponseWriter, r *http.Request)
+	// Get user's lists
+	// (GET /user/lists)
+	UserLists(w http.ResponseWriter, r *http.Request)
 	// Create new list
 	// (POST /user/lists)
-	PostUserLists(w http.ResponseWriter, r *http.Request)
+	UserCreateList(w http.ResponseWriter, r *http.Request)
+	// Update list
+	// (PATCH /user/lists/{list_id})
+	UserListUpdate(w http.ResponseWriter, r *http.Request, listId PathListID)
+	// Add item to list
+	// (POST /user/lists/{list_id})
+	ListAddItem(w http.ResponseWriter, r *http.Request, listId PathListID)
 }
 
 // Unimplemented server implementation that returns http.StatusNotImplemented for each endpoint.
@@ -48,9 +58,27 @@ func (_ Unimplemented) GetUser(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
+// Get user's lists
+// (GET /user/lists)
+func (_ Unimplemented) UserLists(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
 // Create new list
 // (POST /user/lists)
-func (_ Unimplemented) PostUserLists(w http.ResponseWriter, r *http.Request) {
+func (_ Unimplemented) UserCreateList(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Update list
+// (PATCH /user/lists/{list_id})
+func (_ Unimplemented) UserListUpdate(w http.ResponseWriter, r *http.Request, listId PathListID) {
+	w.WriteHeader(http.StatusNotImplemented)
+}
+
+// Add item to list
+// (POST /user/lists/{list_id})
+func (_ Unimplemented) ListAddItem(w http.ResponseWriter, r *http.Request, listId PathListID) {
 	w.WriteHeader(http.StatusNotImplemented)
 }
 
@@ -108,12 +136,79 @@ func (siw *ServerInterfaceWrapper) GetUser(w http.ResponseWriter, r *http.Reques
 	handler.ServeHTTP(w, r.WithContext(ctx))
 }
 
-// PostUserLists operation middleware
-func (siw *ServerInterfaceWrapper) PostUserLists(w http.ResponseWriter, r *http.Request) {
+// UserLists operation middleware
+func (siw *ServerInterfaceWrapper) UserLists(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		siw.Handler.PostUserLists(w, r)
+		siw.Handler.UserLists(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// UserCreateList operation middleware
+func (siw *ServerInterfaceWrapper) UserCreateList(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UserCreateList(w, r)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// UserListUpdate operation middleware
+func (siw *ServerInterfaceWrapper) UserListUpdate(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var err error
+
+	// ------------- Path parameter "list_id" -------------
+	var listId PathListID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "list_id", chi.URLParam(r, "list_id"), &listId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "list_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.UserListUpdate(w, r, listId)
+	}))
+
+	for _, middleware := range siw.HandlerMiddlewares {
+		handler = middleware(handler)
+	}
+
+	handler.ServeHTTP(w, r.WithContext(ctx))
+}
+
+// ListAddItem operation middleware
+func (siw *ServerInterfaceWrapper) ListAddItem(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+
+	var err error
+
+	// ------------- Path parameter "list_id" -------------
+	var listId PathListID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "list_id", chi.URLParam(r, "list_id"), &listId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true})
+	if err != nil {
+		siw.ErrorHandlerFunc(w, r, &InvalidParamFormatError{ParamName: "list_id", Err: err})
+		return
+	}
+
+	handler := http.Handler(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		siw.Handler.ListAddItem(w, r, listId)
 	}))
 
 	for _, middleware := range siw.HandlerMiddlewares {
@@ -246,7 +341,16 @@ func HandlerWithOptions(si ServerInterface, options ChiServerOptions) http.Handl
 		r.Get(options.BaseURL+"/user", wrapper.GetUser)
 	})
 	r.Group(func(r chi.Router) {
-		r.Post(options.BaseURL+"/user/lists", wrapper.PostUserLists)
+		r.Get(options.BaseURL+"/user/lists", wrapper.UserLists)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/user/lists", wrapper.UserCreateList)
+	})
+	r.Group(func(r chi.Router) {
+		r.Patch(options.BaseURL+"/user/lists/{list_id}", wrapper.UserListUpdate)
+	})
+	r.Group(func(r chi.Router) {
+		r.Post(options.BaseURL+"/user/lists/{list_id}", wrapper.ListAddItem)
 	})
 
 	return r

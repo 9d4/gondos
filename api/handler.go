@@ -45,7 +45,7 @@ type serverImpl struct {
 }
 
 // PostUserLists implements ServerInterface.
-func (si *serverImpl) PostUserLists(w http.ResponseWriter, r *http.Request) {
+func (si *serverImpl) UserCreateList(w http.ResponseWriter, r *http.Request) {
 	if err := authenticate(r); err != nil {
 		si.deliverErr(w, r, err)
 		return
@@ -66,6 +66,93 @@ func (si *serverImpl) PostUserLists(w http.ResponseWriter, r *http.Request) {
 		si.deliverErr(w, r, err)
 		return
 	}
+	w.WriteHeader(http.StatusCreated)
+}
+
+// UserLists implements ServerInterface.
+func (si *serverImpl) UserLists(w http.ResponseWriter, r *http.Request) {
+	if err := authenticate(r); err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+
+	lists, err := si.app.UserLists(r.Context())
+	if err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+
+	res := make([]List, 0)
+	for _, v := range lists {
+		res = append(res, List{
+			Id:          v.ID(),
+			Title:       v.Title(),
+			Description: v.Description(),
+			CreatedAt:   v.CreatedAt(),
+			UpdatedAt:   v.UpdatedAt(),
+		})
+	}
+
+	sendJSON(w, http.StatusOK, res)
+}
+
+// UserListUpdate implements ServerInterface.
+func (si *serverImpl) UserListUpdate(w http.ResponseWriter, r *http.Request, listId int) {
+	if err := authenticate(r); err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+
+	var request ListUpdateRequest
+	if err := parseJSON(r, &request); err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+	list, err := app.NewList(request.Title, request.Description)
+	if err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+
+	// request transformed to app.List even can just use request.*
+	// because need to validate, and for now the list for creating new
+	// and updating is the same, so just use NewList.
+
+	if err := si.app.UserUpdateList(
+		r.Context(),
+		int64(listId),
+		list.Title(),
+		list.Description(),
+	); err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+}
+
+// ListAddItem implements ServerInterface.
+func (si *serverImpl) ListAddItem(w http.ResponseWriter, r *http.Request, listId int) {
+	if err := authenticate(r); err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+
+	var request AddItemToListRequest
+	if err := parseJSON(r, &request); err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+
+	item, err := app.NewListItem(int64(listId), request.Body)
+	if err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+
+	if err := si.app.UserAddItemToList(r.Context(), item); err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+
 	w.WriteHeader(http.StatusCreated)
 }
 

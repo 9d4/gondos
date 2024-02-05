@@ -14,7 +14,7 @@ import (
 type ListItems struct {
 	ID        int64 `sql:"primary_key"`
 	ListID    int64
-	Body      *string
-	CreatedAt *time.Time
-	UpdatedAt *time.Time
+	Body      string
+	CreatedAt time.Time
+	UpdatedAt time.Time
 }

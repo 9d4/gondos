@@ -8,6 +8,7 @@ import (
 	"os"
 
 	"github.com/go-chi/jwtauth/v5"
+	"github.com/go-jet/jet/v2/qrm"
 	"github.com/rs/zerolog/log"
 
 	"gondos/internal/app"
@@ -56,6 +57,12 @@ func (si serverImpl) deliverErr(w http.ResponseWriter, r *http.Request, err erro
 		res.Code = "json.parse"
 		res.Message = "Cannot parse json"
 		sendRes(http.StatusBadRequest)
+		return
+
+	case errors.Is(err, qrm.ErrNoRows):
+		res.Code = "resource.not_found"
+		res.Message = "Resource not found"
+		sendRes(http.StatusNotFound)
 		return
 
 	case errors.As(err, &errAppUser):
