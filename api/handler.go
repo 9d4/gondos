@@ -3,13 +3,10 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"strconv"
-	"time"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/jwtauth/v5"
-	"github.com/lestrrat-go/jwx/v2/jwt"
 
 	"gondos/internal/app"
 )
@@ -44,67 +41,26 @@ type serverImpl struct {
 	app *app.App
 }
 
-// ListItems implements ServerInterface.
-func (si *serverImpl) ListItems(w http.ResponseWriter, r *http.Request, listId int) {
+// GetUser implements ServerInterface.
+func (si *serverImpl) GetUser(w http.ResponseWriter, r *http.Request) {
 	if err := authenticate(r); err != nil {
 		si.deliverErr(w, r, err)
 		return
 	}
 
-	items, err := si.app.UserListItems(r.Context(), int64(listId))
+	user, err := si.app.AuthenticatedUser(r.Context())
 	if err != nil {
 		si.deliverErr(w, r, err)
 		return
 	}
 
-	res := make([]ListItem, 0)
-	for _, v := range items {
-		res = append(res, ListItem{
-			Id:        v.ID(),
-			Body:      v.Body(),
-			CreatedAt: v.CreatedAt(),
-			UpdatedAt: v.UpdatedAt(),
-		})
-	}
-
-	sendJSON(w, http.StatusOK, res)
-}
-
-// UpdateListItem implements ServerInterface.
-func (si *serverImpl) UpdateListItem(w http.ResponseWriter, r *http.Request, listId int, itemId int) {
-	if err := authenticate(r); err != nil {
-		si.deliverErr(w, r, err)
-		return
-	}
-
-	var request ListItemUpdateRequest
-	if err := parseJSON(r, &request); err != nil {
-		si.deliverErr(w, r, err)
-		return
-	}
-	item, err := app.NewListItem(int64(listId), request.Body)
-	if err != nil {
-		si.deliverErr(w, r, err)
-		return
-	}
-
-	if err := si.app.UserUpdateListItem(r.Context(), int64(itemId), item.Body()); err != nil {
-		si.deliverErr(w, r, err)
-		return
-	}
-}
-
-// DeleteListItem implements ServerInterface.
-func (si *serverImpl) DeleteListItem(w http.ResponseWriter, r *http.Request, listId int, itemId int) {
-	if err := authenticate(r); err != nil {
-		si.deliverErr(w, r, err)
-		return
-	}
-
-	if err := si.app.UserDeleteListItem(r.Context(), int64(itemId)); err != nil {
-		si.deliverErr(w, r, err)
-		return
-	}
+	sendJSON(w, http.StatusOK, User{
+		Id:        user.ID(),
+		Email:     user.Email(),
+		Name:      user.Name(),
+		CreatedAt: user.CreatedAt(),
+		UpdatedAt: user.UpdatedAt(),
+	})
 }
 
 // PostUserLists implements ServerInterface.
@@ -232,99 +188,65 @@ func (si *serverImpl) ListAddItem(w http.ResponseWriter, r *http.Request, listId
 	w.WriteHeader(http.StatusCreated)
 }
 
-// GetUser implements ServerInterface.
-func (si *serverImpl) GetUser(w http.ResponseWriter, r *http.Request) {
+// ListItems implements ServerInterface.
+func (si *serverImpl) ListItems(w http.ResponseWriter, r *http.Request, listId int) {
 	if err := authenticate(r); err != nil {
 		si.deliverErr(w, r, err)
 		return
 	}
 
-	user, err := si.app.AuthenticatedUser(r.Context())
+	items, err := si.app.UserListItems(r.Context(), int64(listId))
 	if err != nil {
 		si.deliverErr(w, r, err)
 		return
 	}
 
-	sendJSON(w, http.StatusOK, User{
-		Id:        user.ID(),
-		Email:     user.Email(),
-		Name:      user.Name(),
-		CreatedAt: user.CreatedAt(),
-		UpdatedAt: user.UpdatedAt(),
-	})
+	res := make([]ListItem, 0)
+	for _, v := range items {
+		res = append(res, ListItem{
+			Id:        v.ID(),
+			Body:      v.Body(),
+			CreatedAt: v.CreatedAt(),
+			UpdatedAt: v.UpdatedAt(),
+		})
+	}
+
+	sendJSON(w, http.StatusOK, res)
 }
 
-// Register a new account
-// (POST /auth/register)
-func (si *serverImpl) AuthRegister(w http.ResponseWriter, r *http.Request) {
-	var request AuthRegisterRequest
+// UpdateListItem implements ServerInterface.
+func (si *serverImpl) UpdateListItem(w http.ResponseWriter, r *http.Request, listId int, itemId int) {
+	if err := authenticate(r); err != nil {
+		si.deliverErr(w, r, err)
+		return
+	}
+
+	var request ListItemUpdateRequest
 	if err := parseJSON(r, &request); err != nil {
 		si.deliverErr(w, r, err)
 		return
 	}
-
-	user, err := app.NewUser(request.Name, request.Email, request.Password)
+	item, err := app.NewListItem(int64(listId), request.Body)
 	if err != nil {
 		si.deliverErr(w, r, err)
 		return
 	}
 
-	if err := si.app.CreateUser(r.Context(), user); err != nil {
+	if err := si.app.UserUpdateListItem(r.Context(), int64(itemId), item.Body()); err != nil {
 		si.deliverErr(w, r, err)
 		return
 	}
-
-	w.WriteHeader(http.StatusCreated)
 }
 
-// Login
-// (POST /auth/login)
-func (si *serverImpl) AuthLogin(w http.ResponseWriter, r *http.Request) {
-	var request AuthLoginRequest
-	if err := parseJSON(r, &request); err != nil {
+// DeleteListItem implements ServerInterface.
+func (si *serverImpl) DeleteListItem(w http.ResponseWriter, r *http.Request, listId int, itemId int) {
+	if err := authenticate(r); err != nil {
 		si.deliverErr(w, r, err)
 		return
 	}
 
-	user, err := si.app.AuthEmail(r.Context(), request.Email, request.Password)
-	if err != nil {
-		// whatever the problem just send wrong credential
-		// or return the real error
-		si.deliverErr(w, r, app.ErrCredentialsIncorrect)
-		return
-	}
-
-	_, tk, err := tokenAuth.Encode(map[string]interface{}{
-		jwt.SubjectKey:    strconv.Itoa(int(user.ID())),
-		jwt.IssuedAtKey:   time.Now().Unix(),
-		jwt.ExpirationKey: time.Now().Add(10 * time.Minute).Unix(),
-	})
-	if err != nil {
+	if err := si.app.UserDeleteListItem(r.Context(), int64(itemId)); err != nil {
 		si.deliverErr(w, r, err)
 		return
 	}
-
-	sendJSON(w, http.StatusOK, AuthLoginResponse{
-		AccessToken: tk,
-	})
-}
-
-// authenticate checks if request authenticated or not
-func authenticate(r *http.Request) error {
-	_, claims, err := jwtauth.FromContext(r.Context())
-	if err != nil {
-		return err
-	}
-
-	// get subject and put to context
-	sub, ok := claims[jwt.SubjectKey].(string)
-	if !ok {
-		return jwtauth.ErrUnauthorized
-	}
-	subInt, err := strconv.Atoi(sub)
-	if err != nil {
-		return err
-	}
-	*r = *r.WithContext(app.SetUserIDCtx(r.Context(), int64(subInt)))
-	return nil
 }
