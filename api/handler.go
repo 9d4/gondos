@@ -1,13 +1,14 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
+	graphhandler "github.com/99designs/gqlgen/graphql/handler"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/jwtauth/v5"
 
+	"gondos/graph"
 	"gondos/internal/app"
 )
 
@@ -20,13 +21,23 @@ func NewHandler(app *app.App) http.Handler {
 	router.Use(jwtauth.Verifier(tokenAuth))
 	router.Use(func(h http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			rcx := chi.RouteContext(r.Context())
-			fmt.Printf("%#v", rcx)
 			h.ServeHTTP(w, r)
 		})
 	})
 
 	handler := newServer(app)
+
+	// graphql
+	graphHandler := graphhandler.NewDefaultServer(graph.NewExecutableSchema(graph.Config{
+		Resolvers: &graph.Resolver{App: app},
+	}))
+	router.Handle("/graph", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if err := authenticate(r); err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		graphHandler.ServeHTTP(w, r)
+	}))
 
 	return HandlerFromMux(handler, router)
 }

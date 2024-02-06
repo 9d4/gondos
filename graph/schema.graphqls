@@ -2,8 +2,36 @@
 #
 # https://gqlgen.com/getting-started/
 
+type Query {
+  lists: [List!]!
+  listItems(list_id:ID!): [ListItem!]!
+}
+
+type Mutation {
+  createList(list: ListInput!): ID
+  addItemToList (list_id: ID!, item: ListItemInput!): ID
+}
+
 type List {
   id: ID!
   title: String!
-  description: String!
+  description: String
+  created_at: String!
+  updated_at: String!
+}
+
+type ListItem {
+  id: ID!
+  body: String!
+  created_at: String!
+  updated_at: String!
+}
+
+input ListInput {
+  title: String!
+  description: String
+}
+
+input ListItemInput {
+  body: String!
 }
