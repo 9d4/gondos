@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/go-jet/jet/v2/mysql"
-	_ "github.com/go-sql-driver/mysql"
+	mysqldrv "github.com/go-sql-driver/mysql"
 	"github.com/rs/zerolog/diode"
 	"github.com/rs/zerolog/log"
 )
@@ -52,4 +52,12 @@ func SetQueryLogger(output io.Writer) {
 			Str("query", info.Statement.DebugSql()).
 			Send()
 	})
+}
+
+func ParseSchema(dsn string) (string, error) {
+	cfg, err := mysqldrv.ParseDSN(os.Getenv("DSN"))
+	if err != nil {
+		return "", err
+	}
+	return cfg.DBName, nil
 }

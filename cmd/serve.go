@@ -59,9 +59,14 @@ func (c *serveCmd) run(cmd *cobra.Command, args []string) {
 		db.SetQueryLogger(dbLogWriter)
 	}
 
+	schemaName, err := db.ParseSchema(c.opts.dsn)
+	if err != nil {
+		log.Fatal().Err(err).Send()
+	}
+
 	app := app.New(app.Dependencies{
-		UserStore: store.NewUserStore(db_),
-		ListStore: store.NewListStore(db_),
+		UserStore: store.NewUserStore(db_, schemaName),
+		ListStore: store.NewListStore(db_, schemaName),
 	})
 
 	handler := api.NewHandler(app)

@@ -16,11 +16,13 @@ import (
 
 type UserStorage struct {
 	db *sql.DB
+	t  tables
 }
 
-func NewUserStore(db *sql.DB) app.UserStore {
+func NewUserStore(db *sql.DB, schema string) app.UserStore {
 	return &UserStorage{
 		db: db,
+		t:  newTables(schema),
 	}
 }
 
@@ -40,7 +42,7 @@ func (s *UserStorage) Add(ctx context.Context, user app.User) error {
 		UpdatedAt:       user.UpdatedAt(),
 	}
 
-	stmt := table.Users.INSERT(table.Users.AllColumns).MODEL(model)
+	stmt := s.t.users.INSERT(s.t.users.AllColumns).MODEL(model)
 	if _, err := stmt.ExecContext(ctx, tx); err != nil {
 		return s.handleErr(err)
 	}
@@ -49,9 +51,9 @@ func (s *UserStorage) Add(ctx context.Context, user app.User) error {
 }
 
 func (s *UserStorage) ByEmail(ctx context.Context, uc app.UserConstructor, email string) (app.User, error) {
-	stmt := table.Users.
-		SELECT(table.Users.AllColumns).
-		WHERE(table.Users.Email.EQ(mysql.String(email)))
+	stmt := s.t.users.
+		SELECT(s.t.users.AllColumns).
+		WHERE(s.t.users.Email.EQ(mysql.String(email)))
 	var userModel model.Users
 	if err := stmt.QueryContext(ctx, s.db, &userModel); err != nil {
 		return app.User{}, s.handleErr(err)
@@ -69,9 +71,9 @@ func (s *UserStorage) ByEmail(ctx context.Context, uc app.UserConstructor, email
 
 // ByID implements app.UserStore.
 func (s *UserStorage) ByID(ctx context.Context, uc app.UserConstructor, id int64) (app.User, error) {
-	stmt := table.Users.
-		SELECT(table.Users.AllColumns).
-		WHERE(table.Users.ID.EQ(mysql.Int64(id)))
+	stmt := s.t.users.
+		SELECT(s.t.users.AllColumns).
+		WHERE(s.t.users.ID.EQ(mysql.Int64(id)))
 	var userModel model.Users
 	if err := stmt.QueryContext(ctx, s.db, &userModel); err != nil {
 		return app.User{}, s.handleErr(err)
@@ -92,25 +94,29 @@ var _ app.UserStore = &UserStorage{}
 
 type ListStorage struct {
 	db *sql.DB
+	t  tables
 }
 
-func NewListStore(db *sql.DB) app.ListStore {
-	return &ListStorage{db: db}
+func NewListStore(db *sql.DB, schema string) app.ListStore {
+	return &ListStorage{
+		db: db,
+		t:  newTables(schema),
+	}
 }
 
-var getOnelistStmt = func(userID, listID int64) mysql.SelectStatement {
-	return table.Lists.
-		SELECT(table.Lists.UserID).
+func (s *ListStorage) getOnelistStmt(userID, listID int64) mysql.SelectStatement {
+	return s.t.lists.
+		SELECT(s.t.lists.UserID).
 		WHERE(mysql.AND(
-			table.Lists.UserID.EQ(mysql.Int64(userID)),
-			table.Lists.ID.EQ(mysql.Int64(listID)),
+			s.t.lists.UserID.EQ(mysql.Int64(userID)),
+			s.t.lists.ID.EQ(mysql.Int64(listID)),
 		))
 }
 
 // CreateList implements app.ListStore.
 func (s *ListStorage) CreateList(ctx context.Context, list app.List) error {
 	tx, _ := s.db.Begin()
-	userStmt := table.Users.SELECT(table.Users.ID).WHERE(table.Users.ID.EQ(mysql.Int64(list.OwnerID())))
+	userStmt := s.t.users.SELECT(s.t.users.ID).WHERE(s.t.users.ID.EQ(mysql.Int64(list.OwnerID())))
 	if err := userStmt.QueryContext(ctx, tx, &model.Users{}); err != nil {
 		if errors.Is(err, qrm.ErrNoRows) {
 			return app.ErrUserNotFound
@@ -127,7 +133,7 @@ func (s *ListStorage) CreateList(ctx context.Context, list app.List) error {
 		UpdatedAt:   list.UpdatedAt(),
 	}
 
-	insertStmt := table.Lists.INSERT(table.Lists.AllColumns).MODEL(model)
+	insertStmt := s.t.lists.INSERT(s.t.lists.AllColumns).MODEL(model)
 	if _, err := insertStmt.ExecContext(ctx, tx); err != nil {
 		return err
 	}
@@ -139,7 +145,7 @@ func (s *ListStorage) CreateList(ctx context.Context, list app.List) error {
 func (s *ListStorage) Lists(ctx context.Context, listConstructor app.ListConstructor, userID int64) ([]app.List, error) {
 	var listModels []model.Lists
 
-	stmt := table.Lists.SELECT(table.Lists.AllColumns).WHERE(table.Lists.UserID.EQ(mysql.Int64(userID)))
+	stmt := s.t.lists.SELECT(s.t.lists.AllColumns).WHERE(s.t.lists.UserID.EQ(mysql.Int64(userID)))
 	if err := stmt.QueryContext(ctx, s.db, &listModels); err != nil {
 		return nil, err
 	}
@@ -153,16 +159,16 @@ func (s *ListStorage) Lists(ctx context.Context, listConstructor app.ListConstru
 }
 
 // UpdateList implements app.ListStore.
-func (si *ListStorage) UpdateList(ctx context.Context, userID int64, listID int64, title, description string) error {
-	tx, _ := si.db.Begin()
-	if err := getOnelistStmt(userID, listID).QueryContext(ctx, tx, &model.Lists{}); err != nil {
+func (s *ListStorage) UpdateList(ctx context.Context, userID int64, listID int64, title, description string) error {
+	tx, _ := s.db.Begin()
+	if err := s.getOnelistStmt(userID, listID).QueryContext(ctx, tx, &model.Lists{}); err != nil {
 		return err
 	}
 
-	updateStmt := table.Lists.
-		UPDATE(table.Lists.Title, table.Lists.Description, table.Lists.UpdatedAt).
+	updateStmt := s.t.lists.
+		UPDATE(s.t.lists.Title, s.t.lists.Description, s.t.lists.UpdatedAt).
 		SET(title, description, time.Now()).
-		WHERE(table.Lists.ID.EQ(mysql.Int64(listID)))
+		WHERE(s.t.lists.ID.EQ(mysql.Int64(listID)))
 	if _, err := updateStmt.ExecContext(ctx, tx); err != nil {
 		return err
 	}
@@ -172,11 +178,11 @@ func (si *ListStorage) UpdateList(ctx context.Context, userID int64, listID int6
 // DeleteList implements app.ListStore.
 func (s *ListStorage) DeleteList(ctx context.Context, userID int64, listID int64) error {
 	tx, _ := s.db.Begin()
-	if err := getOnelistStmt(userID, listID).QueryContext(ctx, tx, &model.Lists{}); err != nil {
+	if err := s.getOnelistStmt(userID, listID).QueryContext(ctx, tx, &model.Lists{}); err != nil {
 		return err
 	}
 
-	stmt := table.Lists.DELETE().WHERE(table.Lists.ID.EQ(mysql.Int64(listID)))
+	stmt := s.t.lists.DELETE().WHERE(s.t.lists.ID.EQ(mysql.Int64(listID)))
 	if _, err := stmt.ExecContext(ctx, tx); err != nil {
 		return err
 	}
@@ -192,7 +198,7 @@ func (s *ListStorage) DeleteList(ctx context.Context, userID int64, listID int64
 func (s *ListStorage) AddItemToList(ctx context.Context, userID int64, item app.ListItem) error {
 	tx, _ := s.db.Begin()
 
-	if err := getOnelistStmt(userID, item.ListID()).QueryContext(ctx, tx, &model.Lists{}); err != nil {
+	if err := s.getOnelistStmt(userID, item.ListID()).QueryContext(ctx, tx, &model.Lists{}); err != nil {
 		return err
 	}
 
@@ -214,10 +220,10 @@ func (s *ListStorage) AddItemToList(ctx context.Context, userID int64, item app.
 // ListItems implements app.ListStore.
 func (s *ListStorage) ListItems(ctx context.Context, listItemConstructor app.ListItemConstructor, userID, listID int64) ([]app.ListItem, error) {
 	stmt := table.ListItems.SELECT(table.ListItems.AllColumns).
-		FROM(table.ListItems.INNER_JOIN(table.Lists, table.Lists.ID.EQ(table.ListItems.ListID))).
+		FROM(table.ListItems.INNER_JOIN(s.t.lists, s.t.lists.ID.EQ(table.ListItems.ListID))).
 		WHERE(mysql.AND(
-			table.Lists.ID.EQ(mysql.Int64(listID)),
-			table.Lists.UserID.EQ(mysql.Int64(userID)),
+			s.t.lists.ID.EQ(mysql.Int64(listID)),
+			s.t.lists.UserID.EQ(mysql.Int64(userID)),
 		))
 	var models []model.ListItems
 	if err := stmt.QueryContext(ctx, s.db, &models); err != nil {
@@ -232,22 +238,22 @@ func (s *ListStorage) ListItems(ctx context.Context, listItemConstructor app.Lis
 	return items, nil
 }
 
-var getListItemStmt = func(itemID int64, userID int64, sel mysql.Projection, selects ...mysql.Projection) mysql.SelectStatement {
+func (s *ListStorage) getListItemStmt(itemID int64, userID int64, sel mysql.Projection, selects ...mysql.Projection) mysql.SelectStatement {
 	return table.ListItems.
 		SELECT(sel, selects...).
 		FROM(
-			table.ListItems.INNER_JOIN(table.Lists, table.Lists.ID.EQ(table.ListItems.ListID)),
+			table.ListItems.INNER_JOIN(s.t.lists, s.t.lists.ID.EQ(table.ListItems.ListID)),
 		).
 		WHERE(mysql.AND(
 			table.ListItems.ID.EQ(mysql.Int64(itemID)),
-			table.Lists.UserID.EQ(mysql.Int64(userID)),
+			s.t.lists.UserID.EQ(mysql.Int64(userID)),
 		))
 }
 
 // UpdateListItem implements app.ListStore.
 func (s *ListStorage) UpdateListItem(ctx context.Context, userID int64, itemID int64, body string) error {
 	tx, _ := s.db.Begin()
-	stmt := getListItemStmt(itemID, userID, table.ListItems.ID)
+	stmt := s.getListItemStmt(itemID, userID, table.ListItems.ID)
 	if err := stmt.QueryContext(ctx, tx, &model.ListItems{}); err != nil {
 		return err
 	}
@@ -269,7 +275,7 @@ func (s *ListStorage) UpdateListItem(ctx context.Context, userID int64, itemID i
 // DeleteListItem implements app.ListStore.
 func (s *ListStorage) DeleteListItem(ctx context.Context, userID int64, itemID int64) error {
 	tx, _ := s.db.Begin()
-	stmt := getListItemStmt(itemID, userID, table.ListItems.ID)
+	stmt := s.getListItemStmt(itemID, userID, table.ListItems.ID)
 	if err := stmt.QueryContext(ctx, tx, &model.ListItems{}); err != nil {
 		return err
 	}
