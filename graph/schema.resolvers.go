@@ -6,11 +6,12 @@ package graph
 
 import (
 	"context"
+	"gondos/graph/model"
+	"gondos/internal/app"
 	"strconv"
 	"time"
 
-	"gondos/graph/model"
-	"gondos/internal/app"
+	"github.com/rs/zerolog/log"
 )
 
 // CreateList is the resolver for the createList field.
@@ -30,6 +31,40 @@ func (r *mutationResolver) CreateList(ctx context.Context, list model.ListInput)
 	return nil, nil
 }
 
+// UpdateList is the resolver for the updateList field.
+func (r *mutationResolver) UpdateList(ctx context.Context, listID string, list model.ListInput) (*string, error) {
+	listIDInt, err := strconv.Atoi(listID)
+	if err != nil {
+		return nil, err
+	}
+	desc := ""
+	if list.Description != nil {
+		desc = *list.Description
+	}
+	input, err := app.NewList(list.Title, desc)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := r.App.UserUpdateList(ctx, int64(listIDInt), input.Title(), input.Description()); err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
+// DeleteList is the resolver for the deleteList field.
+func (r *mutationResolver) DeleteList(ctx context.Context, listID string) (*string, error) {
+	listIDInt, err := strconv.Atoi(listID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := r.App.UserDeleteList(ctx, int64(listIDInt)); err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
 // AddItemToList is the resolver for the addItemToList field.
 func (r *mutationResolver) AddItemToList(ctx context.Context, listID string, item model.ListItemInput) (*string, error) {
 	listIDInt, err := strconv.Atoi(listID)
@@ -42,6 +77,37 @@ func (r *mutationResolver) AddItemToList(ctx context.Context, listID string, ite
 	}
 
 	if err := r.App.UserAddItemToList(ctx, input); err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
+// UpdateItem is the resolver for the updateItem field.
+func (r *mutationResolver) UpdateItem(ctx context.Context, itemID string, item model.ListItemInput) (*string, error) {
+	itemIDInt, err := strconv.Atoi(itemID)
+	if err != nil {
+		return nil, err
+	}
+	input, err := app.NewListItem(1, item.Body)
+	if err != nil {
+		log.Err(err).Send()
+		return nil, err
+	}
+
+	if err := r.App.UserUpdateListItem(ctx, int64(itemIDInt), input.Body()); err != nil {
+		return nil, err
+	}
+	return nil, nil
+}
+
+// DeleteItem is the resolver for the deleteItem field.
+func (r *mutationResolver) DeleteItem(ctx context.Context, itemID string) (*string, error) {
+	itemIDInt, err := strconv.Atoi(itemID)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := r.App.UserDeleteListItem(ctx, int64(itemIDInt)); err != nil {
 		return nil, err
 	}
 	return nil, nil

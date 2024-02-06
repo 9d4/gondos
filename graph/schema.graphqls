@@ -9,7 +9,11 @@ type Query {
 
 type Mutation {
   createList(list: ListInput!): ID
+  updateList(list_id: ID!, list: ListInput!): ID
+  deleteList(list_id: ID!): ID
   addItemToList (list_id: ID!, item: ListItemInput!): ID
+  updateItem(item_id: ID!, item: ListItemInput!): ID
+  deleteItem(item_id: ID!): ID
 }
 
 type List {
